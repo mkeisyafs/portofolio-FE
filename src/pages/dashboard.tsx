@@ -7,19 +7,24 @@ import Project from "../components/dashboard/project";
 import { useParams } from "react-router-dom";
 import { type portfolio } from "../types/type";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../lib/api";
 
 const dashboard = () => {
   const [Portfolio, setPortfolio] = useState<portfolio | null>(null);
 
   const { portfolio_id } = useParams();
+  console.log("Portfolio ID:", portfolio_id);
 
   useEffect(() => {
     const fetchPortfolio = async () => {
-      await axios
-        .get(`http://localhost:4000/api/portfolio/find-one/${portfolio_id}`)
-        .then((res) => setPortfolio(res.data.data))
-        .catch(console.error);
+      if (!portfolio_id) return;
+      try {
+        const res = await api.get(`/portfolio/find-one/${portfolio_id}`);
+        setPortfolio(res.data.data);
+        console.log(res.data);
+      } catch (error) {
+        console.error(error);
+      }
     };
     fetchPortfolio();
   }, [portfolio_id]);

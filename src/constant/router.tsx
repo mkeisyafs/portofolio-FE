@@ -1,20 +1,30 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import Dashboard from "../pages/dashboard";
 import Form from "../pages/form";
 import Landing from "../pages/landing";
+import Login from "../pages/auth";
+import ProtectedRoute from "../lib/protectedroute";
 
 const Route = createBrowserRouter([
   {
     path: "/",
-    element: <Landing/>
+    element: <Navigate to={"/portfolio"} replace />,
+  },
+  {
+    path: "/portfolio",
+    element: <ProtectedRoute element={<Landing />} />,
   },
   {
     path: "/portfolio/:portfolio_id",
-    element: <Dashboard/>
+    element: <ProtectedRoute element={<Dashboard />} />,
   },
   {
-    path: "/p",
-    element: <Form />,
+    path: "/create",
+    element: <ProtectedRoute element={<Form />} />,
+  },
+  {
+    path: "/auth",
+    element: <Login />,
   },
 ]);
 

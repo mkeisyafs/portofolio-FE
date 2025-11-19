@@ -1,3 +1,10 @@
+export interface user {
+  user_id?: number;
+  username?: string;
+  password?: string;
+  portfolio?: portfolio[];
+}
+
 export interface portfolio {
   portfolio_id?: number;
   nama?: string;

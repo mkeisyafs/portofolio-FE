@@ -3,8 +3,9 @@ import Back from "../components/ui/back";
 import axios from "axios";
 import { Plus } from "lucide-react";
 import { Trash2 } from "lucide-react";
-import { useLocation } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { api } from "../lib/api";
+import { useAuth } from "../lib/userauth";
 
 
 const Form: React.FC = () => {
@@ -34,13 +35,14 @@ const Form: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { portfolio_id } = location.state || {};
+  const userId = useAuth();
 
  useEffect(() => {
-  if (!portfolio_id) return;
+  if (!portfolio_id || !userId) return;
   const FetchData = async () => {
     setIsEdit(true);
     try {
-      const res = await axios.get(`http://localhost:4000/api/portfolio/find-one/${portfolio_id}`);
+      const res = await api.get(`/portfolio/find-one/${portfolio_id}`);
       const data = res.data.data;
       console.log(data);
       setNama(data.nama || "");
@@ -85,7 +87,7 @@ const Form: React.FC = () => {
     }
   };
   FetchData();
-}, [portfolio_id]);
+}, [portfolio_id, userId]);
 
 
 // Upload helper
@@ -93,18 +95,26 @@ async function uploadFile(file: File | null) {
   if (!file) return null;
   const fd = new FormData();
   fd.append('image', file);
-  const res = await axios.post('http://localhost:4000/api/upload', fd, {
+  const res = await api.post('/upload', fd, {
     headers: {
       'Content-Type': 'multipart/form-data',
     }
   });
-  return res.data?.path ?? null;
+  // Handle multiple possible response shapes from backend.
+  // Backend might return { file: {...} } or { path: '/uploads/..', filename: '...' }
+  console.log('upload response', res.data);
+  const data = res.data || {};
+  const pathFromFile = data.file?.path ?? data.file?.filename ? `/uploads/${data.file.filename}` : undefined;
+  const pathDirect = data.path ?? data.filename ? `/uploads/${data.filename}` : undefined;
+  const finalPath = pathFromFile ?? pathDirect ?? null;
+  return finalPath;
 }
 
 const handleSubmit = async () => {
+  
   try {
     // ini untuk mode edit
-    if (IsEdit && portfolio_id) {
+    if (IsEdit && portfolio_id && userId) {
       let fotoPath = FotoOUrl;
       
       if (FotoOFile) {
@@ -115,7 +125,7 @@ const handleSubmit = async () => {
         fotoPath = fotoPath.replace("http://localhost:4000", "");
       }
 
-      await axios.put(`http://localhost:4000/api/portfolio/update/${portfolio_id}`, {
+      await api.put(`/portfolio/update/${portfolio_id}`, {
         nama: Nama,
         foto: fotoPath,
         email: Email,
@@ -127,7 +137,7 @@ const handleSubmit = async () => {
         linkedin: Linkedin,
       });
 
-      await axios.delete(`http://localhost:4000/api/project/delete-by-portfolio/${portfolio_id}`);
+      await api.delete(`/project/delete-by-portfolio/${portfolio_id}`);
       
       const projectsData = await Promise.all(
         Projects.map(async (project) => {
@@ -154,10 +164,10 @@ const handleSubmit = async () => {
         const dataP = {
           projects: projectsData,
         };
-        await axios.post('http://localhost:4000/api/project/create-many', dataP);
+        await api.post(`/project/create-many/${portfolio_id}`, dataP);
       }
 
-      await axios.delete(`http://localhost:4000/api/skill/delete-by-portfolio/${portfolio_id}`);
+      await api.delete(`/skill/delete-by-portfolio/${portfolio_id}`);
       
       const dataS = {
         skill: Skill.map((s) => ({
@@ -166,11 +176,11 @@ const handleSubmit = async () => {
         })),
       };
       if (Skill.length > 0) {
-        await axios.post('http://localhost:4000/api/skill/create-many', dataS);
+        await api.post(`/skill/create-many/${portfolio_id}`, dataS);
       }
 
       alert('Portfolio berhasil diupdate!');
-      navigate('/');
+      navigate('/portfolio');
       return;
     }
 
@@ -178,7 +188,7 @@ const handleSubmit = async () => {
     // Ini untuk mode create
     const fotoPath = await uploadFile(FotoOFile);
 
-    const res = await axios.post('http://localhost:4000/api/portfolio/create', {
+    const res = await api.post(`/portfolio/create/${userId}`, {
       nama: Nama,
       foto: fotoPath,     
       email: Email,     
@@ -208,7 +218,7 @@ const handleSubmit = async () => {
       const dataP = {
         projects: projectsData,
       };
-      await axios.post('http://localhost:4000/api/project/create-many', dataP);
+      await api.post(`/project/create-many/${NewPortId}`, dataP);
     }
 
     const dataS = {
@@ -217,10 +227,10 @@ const handleSubmit = async () => {
         nama_skill: s,
       })),
     };
-    await axios.post('http://localhost:4000/api/skill/create-many', dataS);
+    await api.post(`/skill/create-many/${NewPortId}`, dataS);
 
     alert('Portfolio berhasil dibuat!');
-    navigate('/');
+    navigate('/portfolio');
 
   } catch (err) {
     console.error(err);
